@@ -1,9 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using WindowsAPICodePack.Dialogs;
+
+
 
 namespace ScreenPDF
 {
@@ -11,12 +12,20 @@ namespace ScreenPDF
     {
         private bool _isProcessing = false;
 
+        // Путь к выбранной папке с картинками
+        private string selectedFolderPath = string.Empty;
+
+        // Путь к последней сканированной папке
+        private string lastScanFolder = string.Empty;
+
+
         public MainWindow()
         {
             InitializeComponent();
 
-            //this.Left = Properties.Settings.Default.WindowLeft;
-            //this.Top = Properties.Settings.Default.WindowTop;
+            PathToImages.Text = Properties.Settings.Default.SelectedFolder;
+            selectedFolderPath = Properties.Settings.Default.SelectedFolder;
+            lastScanFolder = Properties.Settings.Default.LastScanFolder;
 
 
             // Запомним размеры (фиксированные) на всякий случай, хотя ResizeMode=NoResize
@@ -90,6 +99,32 @@ namespace ScreenPDF
             }
         }
 
+
+        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                dialog.Description = "Выберите папку с изображениями";
+                dialog.ShowNewFolderButton = false;
+
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    selectedFolderPath = dialog.SelectedPath;
+                    PathToImages.Text = selectedFolderPath;
+
+                    // Обновляем ToolTip вручную (если привязка не сработает сразу)
+                    PathToImages.ToolTip = selectedFolderPath;
+
+                    Console.WriteLine($"Выбрана папка: {selectedFolderPath}");
+
+                    // Сохраняем путь в настройках
+                    Properties.Settings.Default.SelectedFolder = selectedFolderPath;
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
+
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             // Кнопка закрытия: визуальная подсветка на короткое время, затем Close()
@@ -121,17 +156,8 @@ namespace ScreenPDF
             }
         }
 
-        //protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
-        //{
-        //    base.OnClosing(e);
 
-        //    Properties.Settings.Default.WindowLeft = this.Left;
-        //    Properties.Settings.Default.WindowTop = this.Top;
-        //    Properties.Settings.Default.Save();
-        //}
-
-
-        private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
+         private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
@@ -194,6 +220,8 @@ namespace ScreenPDF
             }
 
             TxtStatus.Text = "Готово";
+            this.Close();
+
         }
     }
 }

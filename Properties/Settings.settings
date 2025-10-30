@@ -8,5 +8,11 @@
     <Setting Name="WindowTop" Type="System.Double" Scope="User">
       <Value Profile="(Default)">100</Value>
     </Setting>
+    <Setting Name="SelectedFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="LastScanFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

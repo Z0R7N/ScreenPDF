@@ -1,11 +1,43 @@
 {
   "version": 3,
   "targets": {
-    "net8.0-windows7.0": {}
+    "net8.0-windows7.0": {
+      "WindowsAPICodePack.Shell.CommonFileDialogs/1.1.5": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0-windows7.0/WindowsAPICodePack.Shell.CommonFileDialogs.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0-windows7.0/WindowsAPICodePack.Shell.CommonFileDialogs.dll": {}
+        },
+        "frameworkReferences": [
+          "Microsoft.WindowsDesktop.App"
+        ]
+      }
+    }
   },
-  "libraries": {},
+  "libraries": {
+    "WindowsAPICodePack.Shell.CommonFileDialogs/1.1.5": {
+      "sha512": "nr+QjTXFHI1AMWZ2PlauoX+z+PRjgXfATMNBVHhsGU3NQM8b2eMqbOiP/xLK5STPKR8MtZJ6/RWF5Y0H4ffjLg==",
+      "type": "package",
+      "path": "windowsapicodepack.shell.commonfiledialogs/1.1.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "README.md",
+        "icon.png",
+        "lib/net452/WindowsAPICodePack.Shell.CommonFileDialogs.dll",
+        "lib/net6.0-windows7.0/WindowsAPICodePack.Shell.CommonFileDialogs.dll",
+        "windowsapicodepack.shell.commonfiledialogs.1.1.5.nupkg.sha512",
+        "windowsapicodepack.shell.commonfiledialogs.nuspec"
+      ]
+    }
+  },
   "projectFileDependencyGroups": {
-    "net8.0-windows7.0": []
+    "net8.0-windows7.0": [
+      "WindowsAPICodePack.Shell.CommonFileDialogs >= 1.1.5"
+    ]
   },
   "packageFolders": {
     "C:\\Users\\3\\.nuget\\packages\\": {}
@@ -51,6 +83,12 @@
     "frameworks": {
       "net8.0-windows7.0": {
         "targetAlias": "net8.0-windows",
+        "dependencies": {
+          "WindowsAPICodePack.Shell.CommonFileDialogs": {
+            "target": "Package",
+            "version": "[1.1.5, )"
+          }
+        },
         "imports": [
           "net461",
           "net462",

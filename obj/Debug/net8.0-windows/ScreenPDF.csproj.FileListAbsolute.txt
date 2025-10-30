@@ -18,3 +18,7 @@ D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\refint\ScreenPDF.dll
 D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ScreenPDF.pdb
 D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ScreenPDF.genruntimeconfig.cache
 D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ref\ScreenPDF.dll
+D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ScreenPDF.sourcelink.json
+D:\code\CCodePrjcts\ScreenPDF\bin\Debug\net8.0-windows\WindowsAPICodePack.Shell.CommonFileDialogs.dll
+D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ScreenPDF.csproj.AssemblyReference.cache
+D:\code\CCodePrjcts\ScreenPDF\obj\Debug\net8.0-windows\ScreenPDF.csproj.Up2Date

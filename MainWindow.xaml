@@ -68,10 +68,31 @@
 
             <!-- CONTENT -->
             <Grid Grid.Row="1" Margin="18">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Orientation="Horizontal">
-                    <TextBox x:Name="TxtLeft" Width="180" Height="34" FontSize="14" VerticalContentAlignment="Center" KeyDown="TxtLeft_KeyDown" Margin="0,0,10,0"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Выбор папки с изображениями -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,30,0,40">
+                    <TextBox x:Name="PathToImages" Width="370" Height="30"
+         VerticalContentAlignment="Center"
+         FontSize="13"
+         ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
+         IsReadOnly="False"
+         Margin="0,0,10,0"/>
+                    <Button x:Name="BtnBrowse" Content="Обзор" Width="80" Height="30"
+        Click="BtnBrowse_Click"/>
+                </StackPanel>
+
+                <!-- Поля ввода чисел -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBox x:Name="TxtLeft" Width="180" Height="34" FontSize="14"
+         VerticalContentAlignment="Center"
+         KeyDown="TxtLeft_KeyDown" Margin="0,0,10,0"/>
                     <TextBlock Text="-" VerticalAlignment="Center" FontSize="18" Margin="0,0,10,0"/>
-                    <TextBox x:Name="TxtRight" Width="180" Height="34" FontSize="14" VerticalContentAlignment="Center" KeyDown="TxtRight_KeyDown"/>
+                    <TextBox x:Name="TxtRight" Width="180" Height="34" FontSize="14"
+         VerticalContentAlignment="Center" KeyDown="TxtRight_KeyDown"/>
                 </StackPanel>
             </Grid>
 

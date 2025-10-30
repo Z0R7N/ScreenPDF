@@ -46,5 +46,29 @@ namespace ScreenPDF.Properties {
                 this["WindowTop"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SelectedFolder {
+            get {
+                return ((string)(this["SelectedFolder"]));
+            }
+            set {
+                this["SelectedFolder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastScanFolder {
+            get {
+                return ((string)(this["LastScanFolder"]));
+            }
+            set {
+                this["LastScanFolder"] = value;
+            }
+        }
     }
 }
