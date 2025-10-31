@@ -1,8 +1,9 @@
-﻿using System.Windows;
+﻿using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using WindowsAPICodePack.Dialogs;
+using Path = System.IO.Path;
 
 
 
@@ -17,6 +18,10 @@ namespace ScreenPDF
 
         // Путь к последней сканированной папке
         private string lastScanFolder = string.Empty;
+
+        // массив файлов
+        private string[] imageFiles;
+
 
 
         public MainWindow()
@@ -34,7 +39,60 @@ namespace ScreenPDF
 
             // Ставим фокус на первый текстбокс при создании
             this.Loaded += (s, e) => TxtLeft.Focus();
+
+            Loaded += async (s, e) =>
+            {
+                await ScanFolderAsync();
+            };
+
         }
+
+        // сканирование файлов при запуске программы
+        private async Task ScanFolderAsync()
+        {
+            string pathFolder = Properties.Settings.Default.SelectedFolder;
+            if (pathFolder == "" || string.IsNullOrWhiteSpace(pathFolder))
+            {
+                UpdateStatus("Папка не указана", 0);
+                return;
+            }
+
+            if (!Directory.Exists(pathFolder))
+            {
+                UpdateStatus("Указанная папка не найдена", 0);
+                return;
+            }
+
+            UpdateStatus("Сканирование папки...", 5);
+
+            await Task.Run(() =>
+            {
+                // Поиск изображений с нужными расширениями
+                var extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp" };
+                imageFiles = Directory.GetFiles(pathFolder, "*.*", SearchOption.TopDirectoryOnly)
+                                      .Where(f => extensions.Contains(Path.GetExtension(f).ToLower()))
+                                      .ToArray();
+                Task.Delay(100);
+            });
+
+            if (imageFiles.Length > 0)
+                UpdateStatus($"Найдено {imageFiles.Length} изображений", 0);
+            else
+                UpdateStatus("Изображения не найдены", 0);
+        }
+
+        // обновление статуса в подвале
+        private void UpdateStatus(string message, int progress)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TxtStatus.Text = message;   // Текст внизу окна
+                TxtPercent.Text = progress.ToString() + "%";
+                MainProgress.Value = progress;     // Проценты выполнения
+            });
+        }
+
+
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -100,7 +158,7 @@ namespace ScreenPDF
         }
 
 
-        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        private async void BtnBrowse_Click(object sender, RoutedEventArgs e)
         {
             using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
             {
@@ -120,6 +178,8 @@ namespace ScreenPDF
                     // Сохраняем путь в настройках
                     Properties.Settings.Default.SelectedFolder = selectedFolderPath;
                     Properties.Settings.Default.Save();
+
+                    await ScanFolderAsync();
                 }
             }
         }
@@ -157,7 +217,7 @@ namespace ScreenPDF
         }
 
 
-         private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
+        private void TxtRight_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
@@ -167,61 +227,15 @@ namespace ScreenPDF
                 // Снимаем фокус
                 Keyboard.ClearFocus();
 
-                // Заглушка логики:
+                // Логика
                 string leftVal = TxtLeft.Text;
                 string rightVal = TxtRight.Text;
                 Console.WriteLine($"Start processing: {leftVal} - {rightVal}");
 
-                // Обновляем статус и имитируем прогресс
-                TxtStatus.Text = "Выполняется... Подготовка";
-                await Task.Delay(300);
 
-                // Пример последовательности этапов
-                await RunFakeProgressAsync();
-                Console.WriteLine("Processing complete.");
 
-                TxtStatus.Text = "Готов";
-                MainProgress.Value = 0;
-                TxtPercent.Text = "0%";
                 _isProcessing = false;
             }
-        }
-
-        private async Task RunFakeProgressAsync()
-        {
-            // Демонстрация нескольких этапов с прогрессом
-            var rnd = new Random();
-
-            // Этап 1
-            TxtStatus.Text = "Считывание изображений";
-            for (int p = 0; p <= 20; p++)
-            {
-                MainProgress.Value = p;
-                TxtPercent.Text = $"{p}%";
-                await Task.Delay(25 + rnd.Next(10));
-            }
-
-            // Этап 2
-            TxtStatus.Text = "Формирование PDF";
-            for (int p = 21; p <= 80; p++)
-            {
-                MainProgress.Value = p;
-                TxtPercent.Text = $"{p}%";
-                await Task.Delay(18 + rnd.Next(12));
-            }
-
-            // Этап 3
-            TxtStatus.Text = "Запись файла";
-            for (int p = 81; p <= 100; p++)
-            {
-                MainProgress.Value = p;
-                TxtPercent.Text = $"{p}%";
-                await Task.Delay(20 + rnd.Next(15));
-            }
-
-            TxtStatus.Text = "Готово";
-            this.Close();
-
         }
     }
 }
