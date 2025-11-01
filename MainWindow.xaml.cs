@@ -1,28 +1,22 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Path = System.IO.Path;
-
-
 
 namespace ScreenPDF
 {
     public partial class MainWindow : Window
     {
         private bool _isProcessing = false;
-
-        // Путь к выбранной папке с картинками
+        private bool _isScanning = false;
         private string selectedFolderPath = string.Empty;
-
-        // Путь к последней сканированной папке
         private string lastScanFolder = string.Empty;
-
-        // массив файлов
         private string[] imageFiles;
-
-
 
         public MainWindow()
         {
@@ -32,12 +26,7 @@ namespace ScreenPDF
             selectedFolderPath = Properties.Settings.Default.SelectedFolder;
             lastScanFolder = Properties.Settings.Default.LastScanFolder;
 
-
-            // Запомним размеры (фиксированные) на всякий случай, хотя ResizeMode=NoResize
-            this.Width = 520;
-            this.Height = 310;
-
-            // Ставим фокус на первый текстбокс при создании
+            this.Loaded += (s, e) => RestoreWindowSizeAndPosition();
             this.Loaded += (s, e) => TxtLeft.Focus();
 
             Loaded += async (s, e) =>
@@ -45,66 +34,36 @@ namespace ScreenPDF
                 await ScanFolderAsync();
             };
 
+            // Подписываемся на события изменения текста для сброса ошибки
+            TxtLeft.TextChanged += TextBox_TextChanged;
+            TxtRight.TextChanged += TextBox_TextChanged;
         }
 
-        // сканирование файлов при запуске программы
-        private async Task ScanFolderAsync()
+        private void RestoreWindowSizeAndPosition()
         {
-            string pathFolder = Properties.Settings.Default.SelectedFolder;
-            if (pathFolder == "" || string.IsNullOrWhiteSpace(pathFolder))
-            {
-                UpdateStatus("Папка не указана", 0);
-                return;
-            }
-
-            if (!Directory.Exists(pathFolder))
-            {
-                UpdateStatus("Указанная папка не найдена", 0);
-                return;
-            }
-
-            UpdateStatus("Сканирование папки...", 5);
-
-            await Task.Run(() =>
-            {
-                // Поиск изображений с нужными расширениями
-                var extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp" };
-                imageFiles = Directory.GetFiles(pathFolder, "*.*", SearchOption.TopDirectoryOnly)
-                                      .Where(f => extensions.Contains(Path.GetExtension(f).ToLower()))
-                                      .ToArray();
-                Task.Delay(100);
-            });
-
-            if (imageFiles.Length > 0)
-                UpdateStatus($"Найдено {imageFiles.Length} изображений", 0);
-            else
-                UpdateStatus("Изображения не найдены", 0);
-        }
-
-        // обновление статуса в подвале
-        private void UpdateStatus(string message, int progress)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                TxtStatus.Text = message;   // Текст внизу окна
-                TxtPercent.Text = progress.ToString() + "%";
-                MainProgress.Value = progress;     // Проценты выполнения
-            });
-        }
-
-
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Попытка восстановить позицию из Application Settings
             try
             {
                 var left = Properties.Settings.Default.WindowLeft;
                 var top = Properties.Settings.Default.WindowTop;
+                var width = Properties.Settings.Default.WindowWidth;
+                var height = Properties.Settings.Default.WindowHeight;
+
+                if (width > 0 && height > 0 &&
+                    width >= this.MinWidth && height >= this.MinHeight &&
+                    width <= SystemParameters.VirtualScreenWidth &&
+                    height <= SystemParameters.VirtualScreenHeight)
+                {
+                    this.Width = width;
+                    this.Height = height;
+                }
+                else
+                {
+                    this.Width = 520;
+                    this.Height = 310;
+                }
 
                 if (!double.IsNaN(left) && !double.IsNaN(top) && left >= 0 && top >= 0)
                 {
-                    // Проверка, чтобы окно не открылось вне видимой области
                     var virtualWidth = SystemParameters.VirtualScreenWidth;
                     var virtualHeight = SystemParameters.VirtualScreenHeight;
 
@@ -112,41 +71,195 @@ namespace ScreenPDF
                     {
                         this.Left = left;
                         this.Top = top;
-                    }
-                    else
-                    {
-                        this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                        return;
                     }
                 }
-                else
-                {
-                    this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-                }
+
+                this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
             catch
             {
                 this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                this.Width = 520;
+                this.Height = 310;
             }
+        }
+
+        // Сброс ошибки при изменении текста
+        private void TextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            HideError();
+            UpdateStatus(_isScanning ? "Сканирование файлов" : "Готов", 0);
+        }
+
+        // Показать ошибку жирным красным текстом
+        private void ShowError()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TxtStatus.Text = "Исправьте цифры";
+                TxtStatus.Foreground = new SolidColorBrush(Colors.Red);
+                TxtStatus.FontWeight = FontWeights.Bold;
+            });
+        }
+
+        // Скрыть ошибку и восстановить нормальный статус
+        private void HideError()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(51, 51, 51));
+                TxtStatus.FontWeight = FontWeights.Normal;
+
+                // Восстанавливаем соответствующий статус
+                if (_isScanning)
+                {
+                    TxtStatus.Text = "Сканирование файлов";
+                }
+                else
+                {
+                    TxtStatus.Text = "Готов";
+                }
+            });
+        }
+
+        private bool ValidateNumbers(string leftText, string rightText)
+        {
+            if (string.IsNullOrWhiteSpace(leftText) || string.IsNullOrWhiteSpace(rightText))
+            {
+                return false;
+            }
+
+            if (!int.TryParse(leftText, out int leftNumber) || !int.TryParse(rightText, out int rightNumber))
+            {
+                return false;
+            }
+
+            if (leftNumber <= 0 || rightNumber <= 0)
+            {
+                return false;
+            }
+
+            int lastFourLeft = leftNumber % 10000;
+            int lastFourRight = rightNumber % 10000;
+
+            if (lastFourLeft > lastFourRight)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task StartProcessingAsync(string leftValue, string rightValue)
+        {
+            if (_isProcessing) return;
+
+            _isProcessing = true;
+            UpdateStatus("Начало обработки...", 0);
+
+            try
+            {
+                // Ждем окончания сканирования
+                while (_isScanning)
+                {
+                    await Task.Delay(100);
+                }
+
+                // Проверяем числа еще раз (на случай если пользователь изменил их во время ожидания)
+                if (!ValidateNumbers(leftValue, rightValue))
+                {
+                    ShowError();
+                    return;
+                }
+
+                // Здесь будет основная логика программы
+                // await ProcessImagesAsync(leftValue, rightValue);
+
+                UpdateStatus("Обработка завершена", 100);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка: {ex.Message}", 0);
+            }
+            finally
+            {
+                _isProcessing = false;
+            }
+        }
+
+        private async Task ScanFolderAsync()
+        {
+            _isScanning = true;
+            UpdateStatus("Сканирование файлов", 5);
+
+            string pathFolder = Properties.Settings.Default.SelectedFolder;
+            if (pathFolder == "" || string.IsNullOrWhiteSpace(pathFolder))
+            {
+                UpdateStatus("Папка не указана", 0);
+                _isScanning = false;
+                return;
+            }
+
+            if (!Directory.Exists(pathFolder))
+            {
+                UpdateStatus("Указанная папка не найдена", 0);
+                _isScanning = false;
+                return;
+            }
+
+            await Task.Run(() =>
+            {
+                var extensions = new[] { ".jpg", ".jpeg", ".png", ".bmp" };
+                imageFiles = Directory.GetFiles(pathFolder, "*.*", SearchOption.TopDirectoryOnly)
+                                      .Where(f => extensions.Contains(Path.GetExtension(f).ToLower()))
+                                      .ToArray();
+            });
+
+            _isScanning = false;
+            UpdateStatus("Готов", 0);
+        }
+
+        private void UpdateStatus(string message, int progress)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Не обновляем статус если сейчас показывается ошибка
+                if (TxtStatus.Text == "Исправьте цифры" && message != "Исправьте цифры")
+                    return;
+
+                TxtStatus.Text = message;
+                TxtPercent.Text = progress + "%";
+                MainProgress.Value = progress;
+            });
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Сохраняем позицию
             try
             {
-                Properties.Settings.Default.WindowLeft = this.Left;
-                Properties.Settings.Default.WindowTop = this.Top;
+                if (this.WindowState == WindowState.Normal)
+                {
+                    Properties.Settings.Default.WindowLeft = this.Left;
+                    Properties.Settings.Default.WindowTop = this.Top;
+                    Properties.Settings.Default.WindowWidth = this.Width;
+                    Properties.Settings.Default.WindowHeight = this.Height;
+                }
+                else
+                {
+                    Properties.Settings.Default.WindowLeft = this.RestoreBounds.Left;
+                    Properties.Settings.Default.WindowTop = this.RestoreBounds.Top;
+                    Properties.Settings.Default.WindowWidth = this.RestoreBounds.Width;
+                    Properties.Settings.Default.WindowHeight = this.RestoreBounds.Height;
+                }
+
                 Properties.Settings.Default.Save();
             }
-            catch
-            {
-                // silent
-            }
+            catch { }
         }
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Драг-движение по заголовку
             if (e.ButtonState == MouseButtonState.Pressed)
             {
                 try
@@ -156,7 +269,6 @@ namespace ScreenPDF
                 catch { }
             }
         }
-
 
         private async void BtnBrowse_Click(object sender, RoutedEventArgs e)
         {
@@ -169,13 +281,8 @@ namespace ScreenPDF
                 {
                     selectedFolderPath = dialog.SelectedPath;
                     PathToImages.Text = selectedFolderPath;
-
-                    // Обновляем ToolTip вручную (если привязка не сработает сразу)
                     PathToImages.ToolTip = selectedFolderPath;
 
-                    Console.WriteLine($"Выбрана папка: {selectedFolderPath}");
-
-                    // Сохраняем путь в настройках
                     Properties.Settings.Default.SelectedFolder = selectedFolderPath;
                     Properties.Settings.Default.Save();
 
@@ -184,17 +291,13 @@ namespace ScreenPDF
             }
         }
 
-
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            // Кнопка закрытия: визуальная подсветка на короткое время, затем Close()
             BtnClose.IsEnabled = false;
-            // В шаблоне при IsPressed уже меняется цвет, но сделаем явную задержку, чтобы пользователь увидел эффект
-            // Меняем цвет крестика на серый
             var bgEllipse = (Ellipse)BtnClose.Template.FindName("bg", BtnClose);
             if (bgEllipse != null)
             {
-                bgEllipse.Fill = new SolidColorBrush(Color.FromRgb(138, 138, 138)); // серый
+                bgEllipse.Fill = new SolidColorBrush(Color.FromRgb(138, 138, 138));
             }
             Task.Run(async () =>
             {
@@ -210,31 +313,29 @@ namespace ScreenPDF
         {
             if (e.Key == Key.Enter)
             {
-                // Переместить фокус в следующий
                 TxtRight.Focus();
                 TxtRight.SelectAll();
             }
         }
 
-
-        private void TxtRight_KeyDown(object sender, KeyEventArgs e)
+        private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
                 if (_isProcessing) return;
-                _isProcessing = true;
 
-                // Снимаем фокус
                 Keyboard.ClearFocus();
 
-                // Логика
                 string leftVal = TxtLeft.Text;
                 string rightVal = TxtRight.Text;
-                Console.WriteLine($"Start processing: {leftVal} - {rightVal}");
 
+                if (!ValidateNumbers(leftVal, rightVal))
+                {
+                    ShowError();
+                    return;
+                }
 
-
-                _isProcessing = false;
+                await StartProcessingAsync(leftVal, rightVal);
             }
         }
     }
