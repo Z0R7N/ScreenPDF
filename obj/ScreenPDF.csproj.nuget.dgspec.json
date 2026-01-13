@@ -46,6 +46,10 @@
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2025.12.2, )"
+            },
             "WindowsAPICodePack.Shell.CommonFileDialogs": {
               "target": "Package",
               "version": "[1.1.5, )"

@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "1wRttDyzrDY=",
+  "dgSpecHash": "ELFJzuSsJgM=",
   "success": true,
   "projectFilePath": "D:\\code\\CCodePrjcts\\ScreenPDF\\ScreenPDF.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\3\\.nuget\\packages\\questpdf\\2025.12.2\\questpdf.2025.12.2.nupkg.sha512",
     "C:\\Users\\3\\.nuget\\packages\\windowsapicodepack.shell.commonfiledialogs\\1.1.5\\windowsapicodepack.shell.commonfiledialogs.1.1.5.nupkg.sha512"
   ],
   "logs": []
