@@ -7,6 +7,7 @@
         ResizeMode="CanResize"
         Background="White"
         MinWidth="400" MinHeight="250"
+        Icon="sceen_icon.ico"
         Closing="Window_Closing">
 
     <!-- Ресурсы для цветов -->
@@ -40,9 +41,86 @@
                 <!-- Название слева -->
                 <TextBlock Text="ScreenPDF" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="15" Foreground="#222" />
 
-                <!-- Версия и крестик справа -->
+                <!-- Версия и кнопки справа -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
                     <TextBlock Text="1.0" VerticalAlignment="Center" FontSize="12" Foreground="#9AA0A6" Margin="0,0,10,0"/>
+
+                    <!-- Кнопка помощи -->
+                    <Button x:Name="BtnHelp" Width="28" Height="28" Padding="0"
+            VerticalAlignment="Center" HorizontalAlignment="Right"
+            Background="Transparent" BorderBrush="Transparent"
+            Margin="0,0,8,0">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Grid>
+                                    <Ellipse x:Name="helpBg" Fill="#4DD0E1" Width="28" Height="28" Opacity="0.9"/>
+                                    <TextBlock Text="?" FontSize="16" FontWeight="Bold" Foreground="White" 
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="helpBg" Property="Fill" Value="#26C6DA"/>
+                                        <Setter TargetName="helpBg" Property="Opacity" Value="1"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="helpBg" Property="Fill" Value="#00ACC1"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <Button.ToolTip>
+                            <ToolTip MaxWidth="400" Background="White" BorderBrush="#DDDDDD" BorderThickness="1">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Инструкция по использованию" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="1) " FontWeight="Bold"/>
+                        <Run Text="Создать в папке "/>
+                        <Run Text="&quot;скриншоты/{год}&quot;" FontWeight="Bold"/>
+                        <Run Text=" папку с сегодняшней датой (например: "/>
+                        <Run Text="01 15" FontWeight="Bold"/>
+                        <Run Text=")"/>
+                                    </TextBlock>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="2) " FontWeight="Bold"/>
+                        <Run Text="Перенести скриншоты с флешки в созданную папку"/>
+                                    </TextBlock>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="3) " FontWeight="Bold"/>
+                        <Run Text="Выбрать папку "/>
+                        <Run Text="&quot;скриншоты&quot;" FontWeight="Bold"/>
+                        <Run Text=" через кнопку "/>
+                        <Run Text="&quot;Обзор&quot;" FontWeight="Bold"/>
+                        <Run Text=", если она не выбрана"/>
+                                    </TextBlock>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="4) " FontWeight="Bold"/>
+                        <Run Text="Вписать начальный номер изделия в "/>
+                        <Run Text="левое поле" FontWeight="Bold"/>
+                        <Run Text=", нажать "/>
+                        <Run Text="Enter" FontWeight="Bold"/>
+                                    </TextBlock>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run Text="5) " FontWeight="Bold"/>
+                        <Run Text="Вписать конечный номер в "/>
+                        <Run Text="правое поле" FontWeight="Bold"/>
+                        <Run Text=", нажать "/>
+                        <Run Text="Enter" FontWeight="Bold"/>
+                                    </TextBlock>
+
+                                    <TextBlock TextWrapping="Wrap" Margin="10,10,0,0" FontStyle="Italic" Foreground="#666">
+                        <Run Text="Результат: "/>
+                        <Run Text="PDF-файлы будут созданы в папке на уровень выше от "/>
+                        <Run Text="&quot;скриншоты&quot;" FontWeight="Bold"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </ToolTip>
+                        </Button.ToolTip>
+                    </Button>
 
                     <!-- Крестик -->
                     <Button x:Name="BtnClose" Width="36" Height="28" Padding="0"
@@ -84,7 +162,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    
+
                     <TextBox x:Name="PathToImages" 
                              Grid.Column="0"
                              Height="30"
@@ -93,7 +171,7 @@
                              ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
                              IsReadOnly="False"
                              Margin="0,0,10,0"/>
-                    
+
                     <Button x:Name="BtnBrowse" 
                             Grid.Column="1"
                             Content="Обзор" 
@@ -140,6 +218,7 @@
                              Text="Готов" 
                              VerticalAlignment="Center" 
                              FontSize="13" 
+                             MouseLeftButtonDown="TxtStatus_MouseLeftButtonDown"
                              Foreground="#333" />
 
                     <StackPanel Grid.Column="1" 

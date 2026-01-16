@@ -44,6 +44,9 @@ namespace ScreenPDF
             // Загружаем список исключенных папок
             _excludedYears = LoadExcludedYears();
 
+            // Очищаем список исключений (закомменитировать после отладки приложения)
+            ClearExcludedYears();
+
             // Обработчик события загрузки окна
             Loaded += async (s, e) =>
             {
@@ -55,6 +58,16 @@ namespace ScreenPDF
             // Подписываемся на изменение текста для сброса ошибок
             TxtLeft.TextChanged += (s, e) => ClearError();
             TxtRight.TextChanged += (s, e) => ClearError();
+        }
+
+        /// <summary>
+        /// Очищает список исключённых годов (всегда сканируем все папки)
+        /// </summary>
+        private void ClearExcludedYears()
+        {
+            _excludedYears.Clear();
+            Properties.Settings.Default.ExcludedYears = "";
+            Properties.Settings.Default.Save();
         }
 
         /// <summary>
@@ -126,6 +139,10 @@ namespace ScreenPDF
             if (left <= 0 || right <= 0)
                 return false;
 
+            // Проверяем длину номера (минимум 8 цифр: ГГППДДДД)
+            if (leftText.Length < 8 || leftText.Length > 8 || rightText.Length < 8 || rightText.Length > 8)
+                return false;
+
             // Проверяем, что последние 4 цифры левого числа <= последних 4 цифр правого
             return (left % 10000) <= (right % 10000);
         }
@@ -139,6 +156,21 @@ namespace ScreenPDF
         {
             // Если уже идет обработка, выходим
             if (_isProcessing) return;
+
+            // Проверяем, что папка указана
+            string folder = Properties.Settings.Default.SelectedFolder;
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                ShowError("Выберите папку через кнопку Обзор");
+                return;
+            }
+
+            // Проверяем, что папка существует
+            if (!Directory.Exists(folder))
+            {
+                ShowError("Указанная папка не найдена");
+                return;
+            }
 
             _isProcessing = true;
             UpdateStatus("Начало обработки...", 0);
@@ -199,12 +231,16 @@ namespace ScreenPDF
                     .Where(f => extensions.Contains(Path.GetExtension(f).ToLower()))
                     .ToArray();
 
+                // Если файлов вообще нет - НЕ считаем обработанной
                 if (imageFiles.Length == 0)
-                    return true;
+                    return false;
 
+                // Проверяем, есть ли хоть один файл с именем TEK*
                 bool hasTekFiles = imageFiles.Any(f =>
                     Path.GetFileName(f).StartsWith("TEK", StringComparison.OrdinalIgnoreCase));
 
+                // Если есть TEK файлы - папка НЕ обработана
+                // Если нет TEK файлов (все переименованы) - папка обработана
                 return !hasTekFiles;
             }
             catch
@@ -268,6 +304,10 @@ namespace ScreenPDF
 
                 var yearFolders = GetYearFolders(folder);
 
+                // Отладка: выводим количество найденных папок-годов
+                Dispatcher.Invoke(() => UpdateStatus($"Найдено папок-годов: {yearFolders.Count}", 10));
+                System.Threading.Thread.Sleep(500); // Чтобы успеть увидеть
+
                 foreach (var yearFolder in yearFolders)
                 {
                     string yearName = Path.GetFileName(yearFolder);
@@ -277,6 +317,8 @@ namespace ScreenPDF
 
                     if (_excludedYears.Contains(year))
                     {
+                        Dispatcher.Invoke(() => UpdateStatus($"Пропуск года {year} (исключен)", 15));
+                        System.Threading.Thread.Sleep(300);
                         continue;
                     }
 
@@ -284,8 +326,12 @@ namespace ScreenPDF
                     {
                         _excludedYears.Add(year);
                         excludedListChanged = true;
+                        Dispatcher.Invoke(() => UpdateStatus($"Папка {year} обработана, добавлена в исключения", 20));
+                        System.Threading.Thread.Sleep(300);
                         continue;
                     }
+
+                    Dispatcher.Invoke(() => UpdateStatus($"Сканирование года {year}...", 25));
 
                     var files = Directory.GetFiles(yearFolder, "*.*", SearchOption.AllDirectories)
                         .Where(f =>
@@ -302,6 +348,9 @@ namespace ScreenPDF
                         })
                         .ToArray();
 
+                    Dispatcher.Invoke(() => UpdateStatus($"Год {year}: найдено {files.Length} файлов", 30));
+                    System.Threading.Thread.Sleep(300);
+
                     allFiles.AddRange(files);
                 }
 
@@ -312,12 +361,52 @@ namespace ScreenPDF
 
                 // Сортируем файлы по пути (год/дата/имя файла)
                 _imageFiles = allFiles
-                    .OrderBy(f => f) // Сортировка по полному пути
+                    .OrderBy(f => f)
                     .ToArray();
             });
 
             _isScanning = false;
             UpdateStatus($"Найдено файлов: {_imageFiles.Length}", 0);
+        }
+
+        /// <summary>
+        /// Проверяет существование файла с таким именем и показывает предупреждение
+        /// </summary>
+        /// <param name="newFilePath">Путь к новому файлу</param>
+        /// <param name="number">Номер файла</param>
+        /// <returns>True если файл существует</returns>
+        private bool CheckFileExists(string newFilePath, string number)
+        {
+            if (File.Exists(newFilePath))
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Показываем сообщение
+                    MessageBox.Show(
+                        $"Файл с номером {number} уже существует!\n\nПуть: {newFilePath}",
+                        "Дубликат номера",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    // Открываем папку с выделенным файлом
+                    try
+                    {
+                        string argument = $"/select, \"{newFilePath}\"";
+                        System.Diagnostics.Process.Start("explorer.exe", argument);
+                    }
+                    catch
+                    {
+                        // Если не удалось открыть с выделением, просто открываем папку
+                        try
+                        {
+                            System.Diagnostics.Process.Start("explorer.exe", Path.GetDirectoryName(newFilePath));
+                        }
+                        catch { }
+                    }
+                });
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -473,6 +562,7 @@ namespace ScreenPDF
 
         /// <summary>
         /// Конвертирует изображение осциллографа для ч/б печати
+        /// Преобразует в оттенки серого и применяет негатив
         /// </summary>
         private Bitmap PrepareImageForPrinting(string imagePath)
         {
@@ -481,13 +571,13 @@ namespace ScreenPDF
                 // Проверяем левый нижний угол
                 DrawingColor checkPixel = original.GetPixel(10, original.Height - 10);
 
-                // Если яркость >= 50%, изображение уже готово
+                // Если яркость >= 50%, изображение уже готово (светлый фон)
                 if (checkPixel.GetBrightness() >= 0.5f)
                 {
                     return new Bitmap(original);
                 }
 
-                // Обрабатываем изображение (конвертация цветов)
+                // Создаем результат того же размера
                 var result = new Bitmap(original.Width, original.Height);
 
                 for (int y = 0; y < original.Height; y++)
@@ -496,21 +586,15 @@ namespace ScreenPDF
                     {
                         DrawingColor pixel = original.GetPixel(x, y);
 
-                        // Темный фон (черный/синий) -> белый
-                        if (pixel.GetBrightness() < 0.3f)
-                        {
-                            result.SetPixel(x, y, DrawingColor.White);
-                        }
-                        // Яркий (желтый график, белый текст) -> черный
-                        else if (pixel.GetBrightness() > 0.5f)
-                        {
-                            result.SetPixel(x, y, DrawingColor.Black);
-                        }
-                        // Промежуточные (сетка) -> светло-серый
-                        else
-                        {
-                            result.SetPixel(x, y, DrawingColor.LightGray);
-                        }
+                        // Шаг 1: Конвертируем в оттенки серого (Grayscale)
+                        // Используем стандартную формулу: 0.299*R + 0.587*G + 0.114*B
+                        int grayValue = (int)(pixel.R * 0.299 + pixel.G * 0.587 + pixel.B * 0.114);
+
+                        // Шаг 2: Применяем негатив (инвертируем)
+                        int invertedValue = 255 - grayValue;
+
+                        // Устанавливаем новый цвет (серый)
+                        result.SetPixel(x, y, DrawingColor.FromArgb(invertedValue, invertedValue, invertedValue));
                     }
                 }
 
@@ -519,214 +603,43 @@ namespace ScreenPDF
         }
 
         /// <summary>
-        /// Основной метод обработки изображений
-        /// Переименовывает файлы, создает отдельные PDF файлы с 5 изображениями
+        /// Обработчик клика по статусной строке - копирует текст в буфер обмена
         /// </summary>
-        private async Task ProcessImagesAsync(string leftValue, string rightValue)
+        private void TxtStatus_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            await Task.Run(async () =>
+            if (!string.IsNullOrWhiteSpace(TxtStatus.Text))
             {
-                // Настройка QuestPDF лицензии (Community)
-                QuestPDF.Settings.License = LicenseType.Community;
-
-                string currentNumber = leftValue;
-
-                // Вычисляем сколько файлов нужно обработать
-                int leftNum = int.Parse(leftValue);
-                int rightNum = int.Parse(rightValue);
-                int leftDetail = leftNum % 10000;
-                int rightDetail = rightNum % 10000;
-                int filesToProcess = rightDetail - leftDetail + 1;
-
-                // Проверяем что файлов достаточно
-                if (_imageFiles.Length < filesToProcess)
+                try
                 {
-                    Dispatcher.Invoke(() => ShowError($"Недостаточно файлов! Нужно: {filesToProcess}, Найдено: {_imageFiles.Length}"));
-                    return;
-                }
+                    Clipboard.SetText(TxtStatus.Text);
 
-                int processedFiles = 0;
+                    // Сохраняем текущий текст и цвет
+                    string originalText = TxtStatus.Text;
+                    var originalBrush = TxtStatus.Foreground;
 
-                Dispatcher.Invoke(() => UpdateStatus("Обработка изображений...", 0));
+                    // Показываем что скопировано
+                    TxtStatus.Text = "✓ Скопировано";
+                    TxtStatus.Foreground = new SolidColorBrush(MediaColor.FromRgb(76, 175, 80));
 
-                // Обрабатываем только нужное количество файлов
-                for (int i = 0; i < filesToProcess; i += 5)
-                {
-                    // Определяем сколько файлов взять для этой страницы (максимум 5)
-                    int filesInPage = Math.Min(5, filesToProcess - i);
-                    var pageFiles = new List<(string OriginalPath, string NewNumber, byte[] ImageData)>();
-
-                    // Собираем файлы для одной страницы
-                    for (int j = 0; j < filesInPage; j++)
+                    // Через секунду возвращаем обратно
+                    Task.Run(async () =>
                     {
-                        int fileIndex = i + j;
-                        string filePath = _imageFiles[fileIndex];
-
-                        // Подготавливаем изображение для печати
-                        using (var processedImage = PrepareImageForPrinting(filePath))
+                        await Task.Delay(1000);
+                        Dispatcher.Invoke(() =>
                         {
-                            // Конвертируем в байты для PDF
-                            using (var ms = new MemoryStream())
-                            {
-                                processedImage.Save(ms, ImageFormat.Png);
-                                byte[] imageData = ms.ToArray();
-                                pageFiles.Add((filePath, currentNumber, imageData));
-                            }
-                        }
-
-                        // Переименовываем файл на диске
-                        string directory = Path.GetDirectoryName(filePath);
-                        string extension = Path.GetExtension(filePath);
-                        string newFilePath = Path.Combine(directory, currentNumber + extension);
-
-                        try
-                        {
-                            File.Move(filePath, newFilePath);
-                        }
-                        catch
-                        {
-                            // Если файл уже существует или ошибка - пропускаем
-                        }
-
-                        // Генерируем следующий номер
-                        currentNumber = GetNextNumber(currentNumber);
-
-                        // Обновляем прогресс
-                        processedFiles++;
-                        int progress = (int)((double)processedFiles / filesToProcess * 80);
-                        Dispatcher.Invoke(() => UpdateStatus($"Обработано: {processedFiles}/{filesToProcess}", progress));
-                    }
-
-                    // Создаем отдельный PDF файл для этой страницы
-                    string pdfFileName = pageFiles[0].NewNumber + ".pdf";
-                    string pdfPath = Path.Combine(Properties.Settings.Default.SelectedFolder, pdfFileName);
-
-                    int pdfProgress = 80 + (int)((double)(i / 5 + 1) / Math.Ceiling(filesToProcess / 5.0) * 15);
-                    Dispatcher.Invoke(() => UpdateStatus($"Создание PDF {i / 5 + 1}...", pdfProgress));
-
-                    // Создаем PDF с одной страницей
-                    Document.Create(container =>
-                    {
-                        container.Page(pageDescriptor =>
-                        {
-                            pageDescriptor.Size(PageSizes.A4);
-                            pageDescriptor.Margin(20);
-
-                            pageDescriptor.Content().Column(column =>
-                            {
-                                // Заголовок
-                                column.Item().AlignCenter().Text("Скриншоты проверки ПОС на -50°C")
-                                    .FontSize(16).Bold();
-
-                                column.Item().PaddingVertical(10);
-
-                                // Создаем таблицу 2x3 для равномерного размещения
-                                column.Item().Table(table =>
-                                {
-                                    // Определяем 2 колонки равной ширины
-                                    table.ColumnsDefinition(columns =>
-                                    {
-                                        columns.RelativeColumn();
-                                        columns.RelativeColumn();
-                                    });
-
-                                    // Первый ряд (2 картинки)
-                                    if (pageFiles.Count >= 1)
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC").Padding(5).Column(col =>
-                                        {
-                                            col.Item().AlignCenter().Text(pageFiles[0].NewNumber).FontSize(12).Bold();
-                                            col.Item().Height(150).Image(pageFiles[0].ImageData);
-                                        });
-                                    }
-                                    else
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC");
-                                    }
-
-                                    if (pageFiles.Count >= 2)
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC").Padding(5).Column(col =>
-                                        {
-                                            col.Item().AlignCenter().Text(pageFiles[1].NewNumber).FontSize(12).Bold();
-                                            col.Item().Height(150).Image(pageFiles[1].ImageData);
-                                        });
-                                    }
-                                    else
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC");
-                                    }
-
-                                    // Второй ряд (2 картинки)
-                                    if (pageFiles.Count >= 3)
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC").Padding(5).Column(col =>
-                                        {
-                                            col.Item().AlignCenter().Text(pageFiles[2].NewNumber).FontSize(12).Bold();
-                                            col.Item().Height(150).Image(pageFiles[2].ImageData);
-                                        });
-                                    }
-                                    else
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC");
-                                    }
-
-                                    if (pageFiles.Count >= 4)
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC").Padding(5).Column(col =>
-                                        {
-                                            col.Item().AlignCenter().Text(pageFiles[3].NewNumber).FontSize(12).Bold();
-                                            col.Item().Height(150).Image(pageFiles[3].ImageData);
-                                        });
-                                    }
-                                    else
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC");
-                                    }
-
-                                    // Третий ряд (1 картинка слева)
-                                    if (pageFiles.Count >= 5)
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC").Padding(5).Column(col =>
-                                        {
-                                            col.Item().AlignCenter().Text(pageFiles[4].NewNumber).FontSize(12).Bold();
-                                            col.Item().Height(150).Image(pageFiles[4].ImageData);
-                                        });
-                                    }
-                                    else
-                                    {
-                                        table.Cell().Border(1).BorderColor("#CCCCCC");
-                                    }
-
-                                    // Пустая ячейка справа
-                                    table.Cell().Border(1).BorderColor("#CCCCCC");
-                                });
-
-                                column.Item().PaddingVertical(10);
-
-                                // Места для подписей внизу страницы
-                                column.Item().PaddingTop(20).Column(signColumn =>
-                                {
-                                    signColumn.Item().Text("Представитель подразделения изготовителя: _________________________________")
-                                        .FontSize(10);
-                                    signColumn.Item().PaddingTop(10).Text("Представитель ОТК: _________________________________")
-                                        .FontSize(10);
-                                    signColumn.Item().PaddingTop(10).Text("Представитель ВП: __________________________________")
-                                        .FontSize(10);
-                                });
-                            });
+                            TxtStatus.Text = originalText;
+                            TxtStatus.Foreground = originalBrush;
                         });
-                    }).GeneratePdf(pdfPath);
-
-                    // Небольшая пауза между созданием PDF файлов
-                    await Task.Delay(50);
+                    });
                 }
-
-                Dispatcher.Invoke(() => UpdateStatus("Готово!", 100));
-            });
+                catch
+                {
+                    // Если не удалось скопировать - ничего не делаем
+                }
+            }
         }
 
-        /// <summary>
+                /// <summary>
         /// Обработчик нажатия клавиш в правом поле ввода
         /// </summary>
         private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
@@ -748,5 +661,262 @@ namespace ScreenPDF
                 await StartProcessingAsync(TxtLeft.Text, TxtRight.Text);
             }
         }
+
+        /// <summary>
+        /// Основной метод обработки изображений
+        /// Создает PDF файлы, затем переименовывает файлы
+        /// </summary>
+        private async Task ProcessImagesAsync(string leftValue, string rightValue)
+        {
+            await Task.Run(async () =>
+            {
+                QuestPDF.Settings.License = LicenseType.Community;
+
+                // Вычисляем параметры обработки
+                int filesToProcess = CalculateFilesToProcess(leftValue, rightValue);
+
+                // Проверяем достаточность файлов
+                if (_imageFiles.Length < filesToProcess)
+                {
+                    Dispatcher.Invoke(() => ShowError($"Недостаточно файлов! Нужно: {filesToProcess}, Найдено: {_imageFiles.Length}"));
+                    return;
+                }
+
+                Dispatcher.Invoke(() => UpdateStatus("Обработка изображений...", 0));
+
+                // Собираем данные для PDF и список переименований
+                var (pdfPages, renameList) = await CollectPdfDataAsync(leftValue, filesToProcess);
+
+                if (pdfPages == null || renameList == null)
+                    return; // Ошибка уже показана
+
+                // Создаём все PDF файлы
+                bool pdfSuccess = await CreatePdfFilesAsync(pdfPages, filesToProcess);
+
+                if (!pdfSuccess)
+                    return;
+
+                // Переименовываем файлы только если PDF созданы успешно
+                await RenameFilesAsync(renameList);
+
+                Dispatcher.Invoke(() => UpdateStatus("Готово!", 100));
+            });
+        }
+
+        /// <summary>
+        /// Вычисляет количество файлов для обработки
+        /// </summary>
+        private int CalculateFilesToProcess(string leftValue, string rightValue)
+        {
+            int leftNum = int.Parse(leftValue);
+            int rightNum = int.Parse(rightValue);
+            int leftDetail = leftNum % 10000;
+            int rightDetail = rightNum % 10000;
+            return rightDetail - leftDetail + 1;
+        }
+
+        /// <summary>
+        /// Собирает данные для PDF и подготавливает список переименований
+        /// </summary>
+        private async Task<(List<List<(string OriginalPath, string NewNumber, byte[] ImageData)>>, List<(string OldPath, string NewPath)>)>
+            CollectPdfDataAsync(string startNumber, int filesToProcess)
+        {
+            var pdfPages = new List<List<(string OriginalPath, string NewNumber, byte[] ImageData)>>();
+            var renameList = new List<(string OldPath, string NewPath)>();
+
+            string currentNumber = startNumber;
+            int processedFiles = 0;
+
+            for (int i = 0; i < filesToProcess; i += 5)
+            {
+                int filesInPage = Math.Min(5, filesToProcess - i);
+                var pageFiles = new List<(string OriginalPath, string NewNumber, byte[] ImageData)>();
+
+                for (int j = 0; j < filesInPage; j++)
+                {
+                    int fileIndex = i + j;
+                    string filePath = _imageFiles[fileIndex];
+
+                    // Обрабатываем изображение
+                    using (var processedImage = PrepareImageForPrinting(filePath))
+                    {
+                        using (var ms = new MemoryStream())
+                        {
+                            processedImage.Save(ms, ImageFormat.Png);
+                            byte[] imageData = ms.ToArray();
+                            pageFiles.Add((filePath, currentNumber, imageData));
+                        }
+                    }
+
+                    // Подготавливаем переименование
+                    string directory = Path.GetDirectoryName(filePath);
+                    string extension = Path.GetExtension(filePath);
+                    string newFilePath = Path.Combine(directory, currentNumber + extension);
+
+                    // Проверяем существование файла
+                    if (CheckFileExists(newFilePath, currentNumber))
+                    {
+                        Dispatcher.Invoke(() => ShowError($"Остановлено: файл {currentNumber} уже существует"));
+                        return (null, null);
+                    }
+
+                    renameList.Add((filePath, newFilePath));
+                    currentNumber = GetNextNumber(currentNumber);
+
+                    // Обновляем прогресс
+                    processedFiles++;
+                    int progress = (int)((double)processedFiles / filesToProcess * 70);
+                    Dispatcher.Invoke(() => UpdateStatus($"Обработано: {processedFiles}/{filesToProcess}", progress));
+                }
+
+                pdfPages.Add(pageFiles);
+            }
+
+            return (pdfPages, renameList);
+        }
+
+        /// <summary>
+        /// Создаёт все PDF файлы
+        /// </summary>
+        private async Task<bool> CreatePdfFilesAsync(
+            List<List<(string OriginalPath, string NewNumber, byte[] ImageData)>> pdfPages,
+            int filesToProcess)
+        {
+            string parentFolder = Directory.GetParent(Properties.Settings.Default.SelectedFolder).FullName;
+
+            for (int pageIndex = 0; pageIndex < pdfPages.Count; pageIndex++)
+            {
+                var pageFiles = pdfPages[pageIndex];
+                string pdfFileName = pageFiles[0].NewNumber + ".pdf";
+                string pdfPath = Path.Combine(parentFolder, pdfFileName);
+
+                int pdfProgress = 70 + (int)((double)(pageIndex + 1) / pdfPages.Count * 20);
+                Dispatcher.Invoke(() => UpdateStatus($"Создание PDF {pageIndex + 1}...", pdfProgress));
+
+                try
+                {
+                    CreateSinglePdf(pdfPath, pageFiles);
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() => ShowError($"Ошибка создания PDF: {ex.Message}"));
+                    return false;
+                }
+
+                await Task.Delay(50);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Создаёт один PDF файл
+        /// </summary>
+        private void CreateSinglePdf(string pdfPath, List<(string OriginalPath, string NewNumber, byte[] ImageData)> pageFiles)
+        {
+            Document.Create(container =>
+            {
+                container.Page(pageDescriptor =>
+                {
+                    pageDescriptor.Size(PageSizes.A4);
+                    pageDescriptor.Margin(20);
+
+                    pageDescriptor.Content().Column(column =>
+                    {
+                        // Заголовок
+                        column.Item().PaddingVertical(10);
+                        column.Item().AlignCenter().Text("Скриншоты проверки ПОС на -50°C")
+                            .FontSize(16).Bold();
+                        column.Item().PaddingVertical(10);
+
+                        // Создаем таблицу 2x3 для равномерного размещения
+                        column.Item().PaddingLeft(40).PaddingRight(40).Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            // Первый ряд
+                            AddTableCell(table, pageFiles, 0);
+                            AddTableCell(table, pageFiles, 1);
+
+                            // Второй ряд
+                            AddTableCell(table, pageFiles, 2);
+                            AddTableCell(table, pageFiles, 3);
+
+                            // Третий ряд
+                            AddTableCell(table, pageFiles, 4);
+                            table.Cell(); // Пустая ячейка справа
+                        });
+
+                        column.Item().PaddingVertical(10);
+
+                        // Места для подписей внизу страницы
+                        column.Item().PaddingTop(30).Column(signColumn =>
+                        {
+                            signColumn.Item().PaddingLeft(45).Text("Представитель подразделения изготовителя: _________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ОТК: __________________________________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ВП: ___________________________________________________________")
+                                .FontSize(10);
+                        });
+                    });
+                });
+            }).GeneratePdf(pdfPath);
+        }
+
+        /// <summary>
+        /// Добавляет ячейку с изображением в таблицу
+        /// </summary>
+        private void AddTableCell(
+            QuestPDF.Fluent.TableDescriptor table,
+            List<(string OriginalPath, string NewNumber, byte[] ImageData)> pageFiles,
+            int index)
+        {
+            if (pageFiles.Count > index)
+            {
+                table.Cell().Padding(5).Column(col =>
+                {
+                    col.Item().AlignCenter().Text(pageFiles[index].NewNumber).FontSize(12).Bold();
+                    col.Item().Image(pageFiles[index].ImageData).FitArea();
+                });
+            }
+            else
+            {
+                table.Cell();
+            }
+        }
+
+        /// <summary>
+        /// Переименовывает все файлы из списка
+        /// </summary>
+        private async Task RenameFilesAsync(List<(string OldPath, string NewPath)> renameList)
+        {
+            Dispatcher.Invoke(() => UpdateStatus("Переименование файлов...", 95));
+
+            foreach (var (oldPath, newPath) in renameList)
+            {
+                try
+                {
+                    File.Move(oldPath, newPath);
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            $"Ошибка при переименовании файла:\n{oldPath}\n\nОшибка: {ex.Message}",
+                            "Ошибка переименования",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    });
+                    return;
+                }
+            }
+        }
+
     }
 }

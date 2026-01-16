@@ -6,11 +6,26 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>asset\sceen_icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="sceen_icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="asset\sceen_icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="QuestPDF" Version="2025.12.2" />
     <PackageReference Include="WindowsAPICodePack.Shell.CommonFileDialogs" Version="1.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="sceen_icon.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
   <ItemGroup>
