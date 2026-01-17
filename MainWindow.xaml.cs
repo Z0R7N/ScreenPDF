@@ -425,6 +425,18 @@ namespace ScreenPDF
                 TxtStatus.Text = message;
                 TxtPercent.Text = $"{progress}%";
                 MainProgress.Value = progress;
+
+                // Сбрасываем стиль ошибки (красный жирный текст)
+                // если это не сообщение об ошибке
+                if (!message.StartsWith("Ошибка") &&
+                    !message.StartsWith("Остановлено") &&
+                    !message.StartsWith("Недостаточно") &&
+                    !message.StartsWith("Исправьте") &&
+                    !message.StartsWith("Выберите"))
+                {
+                    TxtStatus.Foreground = new SolidColorBrush(MediaColor.FromRgb(51, 51, 51));
+                    TxtStatus.FontWeight = FontWeights.Normal;
+                }
             });
         }
 
@@ -554,6 +566,12 @@ namespace ScreenPDF
             if (lastDigit == 1 && detail > int.Parse(currentNumber.Substring(4, 4)))
             {
                 batch++;
+
+                // Если партия превысила 99, сбрасываем на 00
+                if (batch > 99)
+                {
+                    batch = 0;
+                }
             }
 
             // Формируем новый номер
