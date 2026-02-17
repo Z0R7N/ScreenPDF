@@ -842,10 +842,10 @@ namespace ScreenPDF
                     pageDescriptor.Content().Column(column =>
                     {
                         // Заголовок
-                        column.Item().PaddingVertical(10);
+                        column.Item().PaddingVertical(7);
                         column.Item().AlignCenter().Text("Скриншоты проверки ПОС на -50°C")
                             .FontSize(16).Bold();
-                        column.Item().PaddingVertical(10);
+                        column.Item().PaddingVertical(5);
 
                         // Создаем таблицу 2x3 для равномерного размещения
                         column.Item().PaddingLeft(40).PaddingRight(40).Table(table =>
@@ -872,13 +872,17 @@ namespace ScreenPDF
                         column.Item().PaddingVertical(10);
 
                         // Места для подписей внизу страницы
-                        column.Item().PaddingTop(30).Column(signColumn =>
+                        column.Item().PaddingTop(12).Column(signColumn =>
                         {
                             signColumn.Item().PaddingLeft(45).Text("Представитель подразделения изготовителя: _________________________________")
                                 .FontSize(10);
                             signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ОТК: __________________________________________________________")
                                 .FontSize(10);
                             signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ВП: ___________________________________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Осциллограф TDS1002B №C059898 _______________________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Камера КТХ-240 №001 _________________________________________________________")
                                 .FontSize(10);
                         });
                     });
