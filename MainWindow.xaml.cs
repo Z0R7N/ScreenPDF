@@ -551,26 +551,28 @@ namespace ScreenPDF
         /// <returns>Следующий номер с учетом партий</returns>
         private string GetNextNumber(string currentNumber)
         {
-            // Разбираем номер: ГГ ПП ДДДДД
+            if (string.IsNullOrWhiteSpace(currentNumber) || currentNumber.Length != 8)
+                throw new ArgumentException("Номер должен состоять из 8 цифр.");
+
+            // Разбираем номер: ГГ ПП ДДДД
             int year = int.Parse(currentNumber.Substring(0, 2));
             int batch = int.Parse(currentNumber.Substring(2, 2));
             int detail = int.Parse(currentNumber.Substring(4, 4));
 
+            int previousDetail = detail;
+
             // Увеличиваем номер детали
             detail++;
 
-            // Проверяем последнюю цифру
-            int lastDigit = detail % 10;
-
-            // Если последняя цифра стала 1 (новая партия началась)
-            if (lastDigit == 1 && detail > int.Parse(currentNumber.Substring(4, 4)))
+            // Если началась новая десятка (например 5050 → 5051)
+            if (detail % 10 == 1 && detail > previousDetail)
             {
                 batch++;
 
-                // Если партия превысила 99, сбрасываем на 00
+                // ❗ После 99 сразу 01 (нулевой партии нет)
                 if (batch > 99)
                 {
-                    batch = 0;
+                    batch = 1;
                 }
             }
 

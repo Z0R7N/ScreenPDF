@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b07dd22e6bd5245aecdda2c0b97376334bd7f4fd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c4daf37814d969ae3e93e5c8197311136e161d34")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
