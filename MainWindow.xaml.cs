@@ -659,7 +659,7 @@ namespace ScreenPDF
             }
         }
 
-                /// <summary>
+        /// <summary>
         /// Обработчик нажатия клавиш в правом поле ввода
         /// </summary>
         private async void TxtRight_KeyDown(object sender, KeyEventArgs e)
@@ -815,7 +815,14 @@ namespace ScreenPDF
 
                 try
                 {
-                    CreateSinglePdf(pdfPath, pageFiles);
+                    // Проверяем состояние чекбокса
+                    bool isPeriodic = false;
+                    Dispatcher.Invoke(() => isPeriodic = ChkPeriodTests.IsChecked == true);
+
+                    if (isPeriodic)
+                        CreateSinglePdfPeriod(pdfPath, pageFiles);
+                    else
+                        CreateSinglePdf(pdfPath, pageFiles);
                 }
                 catch (Exception ex)
                 {
@@ -830,9 +837,9 @@ namespace ScreenPDF
         }
 
         /// <summary>
-        /// Создаёт один PDF файл
+        /// Создаёт один PDF файл ДЛЯ ПЕРЕОДИЧЕСКИХ ИСПЫТАНИЙ
         /// </summary>
-        private void CreateSinglePdf(string pdfPath, List<(string OriginalPath, string NewNumber, byte[] ImageData)> pageFiles)
+        private void CreateSinglePdfPeriod(string pdfPath, List<(string OriginalPath, string NewNumber, byte[] ImageData)> pageFiles)
         {
             Document.Create(container =>
             {
@@ -891,6 +898,66 @@ namespace ScreenPDF
                 });
             }).GeneratePdf(pdfPath);
         }
+
+        /// <summary>
+        /// Создаёт один PDF файл
+        /// </summary>
+        private void CreateSinglePdf(string pdfPath, List<(string OriginalPath, string NewNumber, byte[] ImageData)> pageFiles)
+        {
+            Document.Create(container =>
+            {
+                container.Page(pageDescriptor =>
+                {
+                    pageDescriptor.Size(PageSizes.A4);
+                    pageDescriptor.Margin(20);
+
+                    pageDescriptor.Content().Column(column =>
+                    {
+                        // Заголовок
+                        column.Item().PaddingVertical(15);
+                        column.Item().AlignCenter().Text("Скриншоты проверки ПОС на -50°C")
+                            .FontSize(16).Bold();
+                        column.Item().PaddingVertical(10);
+
+                        // Создаем таблицу 2x3 для равномерного размещения
+                        column.Item().PaddingLeft(40).PaddingRight(40).Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            // Первый ряд
+                            AddTableCell(table, pageFiles, 0);
+                            AddTableCell(table, pageFiles, 1);
+
+                            // Второй ряд
+                            AddTableCell(table, pageFiles, 2);
+                            AddTableCell(table, pageFiles, 3);
+
+                            // Третий ряд
+                            AddTableCell(table, pageFiles, 4);
+                            table.Cell(); // Пустая ячейка справа
+                        });
+
+                        column.Item().PaddingVertical(10);
+
+                        // Места для подписей внизу страницы
+                        column.Item().PaddingTop(20).Column(signColumn =>
+                        {
+                            signColumn.Item().PaddingLeft(45).Text("Представитель подразделения изготовителя: _________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ОТК: __________________________________________________________")
+                                .FontSize(10);
+                            signColumn.Item().PaddingLeft(45).PaddingTop(15).Text("Представитель ВП: ___________________________________________________________")
+                                .FontSize(10);
+                        });
+                    });
+                });
+            }).GeneratePdf(pdfPath);
+        }
+
 
         /// <summary>
         /// Добавляет ячейку с изображением в таблицу
