@@ -44,6 +44,20 @@ namespace ScreenPDF
             // Загружаем список исключенных папок
             _excludedYears = LoadExcludedYears();
 
+            //---------------------------
+            // Удаляем текущий год из исключений, если он там есть
+            int currentYear = DateTime.Now.Year % 100; // Берем последние 2 цифры (например, 26)
+            // Показываем список исключений ДО удаления
+            string excludedBefore = _excludedYears.Count > 0 ? string.Join(", ", _excludedYears) : "(пусто)";
+            if (_excludedYears.Contains(currentYear))
+            {
+                _excludedYears.Remove(currentYear);
+                SaveExcludedYears();
+            }
+            // Показываем список исключений ПОСЛЕ удаления
+            string excludedAfter = _excludedYears.Count > 0 ? string.Join(", ", _excludedYears) : "(пусто)";
+            //----------------------
+
             // Очищаем список исключений (закомменитировать после отладки приложения)
             ClearExcludedYears();
 
@@ -219,9 +233,6 @@ namespace ScreenPDF
             Properties.Settings.Default.Save();
         }
 
-        /// <summary>
-        /// Проверяет, содержит ли папка только переименованные файлы (без TEK*.JPG)
-        /// </summary>
         private bool IsFolderProcessed(string folderPath)
         {
             try
@@ -231,17 +242,13 @@ namespace ScreenPDF
                     .Where(f => extensions.Contains(Path.GetExtension(f).ToLower()))
                     .ToArray();
 
-                // Если файлов вообще нет - НЕ считаем обработанной
                 if (imageFiles.Length == 0)
                     return false;
 
-                // Проверяем, есть ли хоть один файл с именем TEK*
-                bool hasTekFiles = imageFiles.Any(f =>
-                    Path.GetFileName(f).StartsWith("TEK", StringComparison.OrdinalIgnoreCase));
+                // Если есть хотя бы один файл, начинающийся с буквы - папка НЕ обработана
+                bool hasLetterStart = imageFiles.Any(f => !char.IsDigit(Path.GetFileName(f)[0]));
 
-                // Если есть TEK файлы - папка НЕ обработана
-                // Если нет TEK файлов (все переименованы) - папка обработана
-                return !hasTekFiles;
+                return !hasLetterStart; // true только если все файлы начинаются с цифры
             }
             catch
             {
@@ -348,6 +355,9 @@ namespace ScreenPDF
                         })
                         .ToArray();
 
+
+
+
                     Dispatcher.Invoke(() => UpdateStatus($"Год {year}: найдено {files.Length} файлов", 30));
                     System.Threading.Thread.Sleep(300);
 
@@ -364,7 +374,6 @@ namespace ScreenPDF
                     .OrderBy(f => f)
                     .ToArray();
             });
-
             _isScanning = false;
             UpdateStatus($"Найдено файлов: {_imageFiles.Length}", 0);
         }
