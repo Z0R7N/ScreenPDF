@@ -43,7 +43,7 @@
 
                 <!-- Версия и кнопки справа -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-                    <TextBlock Text="4.2" VerticalAlignment="Center" FontSize="12" Foreground="#9AA0A6" Margin="0,0,10,0"/>
+                    <TextBlock Text="4.3" VerticalAlignment="Center" FontSize="12" Foreground="#9AA0A6" Margin="0,0,10,0"/>
 
                     <!-- Кнопка помощи -->
                     <Button x:Name="BtnHelp" Width="28" Height="28" Padding="0"

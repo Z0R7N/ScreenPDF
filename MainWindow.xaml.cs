@@ -202,15 +202,24 @@ namespace ScreenPDF
                     return;
                 }
 
-                // Основная логика обработки изображений
-                await ProcessImagesAsync(leftValue, rightValue);
+                // Основная логика обработки изображений.
+                // Метод теперь возвращает true/false — успешно завершилась обработка или нет.
+                bool success = await ProcessImagesAsync(leftValue, rightValue);
+
+                // Если внутри произошла ошибка (не хватает файлов, дубликат номера,
+                // ошибка создания PDF и т.д.) — она уже показана пользователю через ShowError.
+                // Приложение НЕ закрываем, чтобы пользователь успел прочитать ошибку.
+                if (!success)
+                {
+                    return;
+                }
 
                 UpdateStatus("Обработка завершена", 100);
 
-                // Небольшая задержка чтобы пользователь увидел "Готово!"
-                await Task.Delay(500);
+                // Пауза 2 секунды, чтобы пользователь успел увидеть "Обработка завершена"
+                await Task.Delay(2000);
 
-                // Закрываем приложение
+                // Закрываем приложение (только если всё прошло успешно)
                 Application.Current.Shutdown();
             }
             catch (Exception ex)
@@ -695,9 +704,12 @@ namespace ScreenPDF
         /// Основной метод обработки изображений
         /// Создает PDF файлы, затем переименовывает файлы
         /// </summary>
-        private async Task ProcessImagesAsync(string leftValue, string rightValue)
+        /// <returns>True, если обработка прошла успешно; False, если была ошибка</returns>
+        private async Task<bool> ProcessImagesAsync(string leftValue, string rightValue)
         {
-            await Task.Run(async () =>
+            // Возвращаем результат наружу (true/false), чтобы StartProcessingAsync
+            // знал, можно ли закрывать приложение
+            return await Task.Run(async () =>
             {
                 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -708,7 +720,7 @@ namespace ScreenPDF
                 if (_imageFiles.Length < filesToProcess)
                 {
                     Dispatcher.Invoke(() => ShowError($"Недостаточно файлов! Нужно: {filesToProcess}, Найдено: {_imageFiles.Length}"));
-                    return;
+                    return false; // ошибка — сообщаем об этом наружу
                 }
 
                 Dispatcher.Invoke(() => UpdateStatus("Обработка изображений...", 0));
@@ -717,18 +729,20 @@ namespace ScreenPDF
                 var (pdfPages, renameList) = await CollectPdfDataAsync(leftValue, filesToProcess);
 
                 if (pdfPages == null || renameList == null)
-                    return; // Ошибка уже показана
+                    return false; // ошибка уже показана внутри CollectPdfDataAsync
 
                 // Создаём все PDF файлы
                 bool pdfSuccess = await CreatePdfFilesAsync(pdfPages, filesToProcess);
 
                 if (!pdfSuccess)
-                    return;
+                    return false; // ошибка уже показана внутри CreatePdfFilesAsync
 
                 // Переименовываем файлы только если PDF созданы успешно
                 await RenameFilesAsync(renameList);
 
                 Dispatcher.Invoke(() => UpdateStatus("Готово!", 100));
+
+                return true; // всё прошло успешно
             });
         }
 
