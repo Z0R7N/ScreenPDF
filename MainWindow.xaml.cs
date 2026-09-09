@@ -349,20 +349,43 @@ namespace ScreenPDF
 
                     Dispatcher.Invoke(() => UpdateStatus($"Сканирование года {year}...", 25));
 
-                    var files = Directory.GetFiles(yearFolder, "*.*", SearchOption.AllDirectories)
-                        .Where(f =>
+                    var filesList = new List<string>();
+
+                    foreach (string file in Directory.GetFiles(yearFolder, "*.*", SearchOption.AllDirectories))
+                    {
+                        try
                         {
-                            if (!extensions.Contains(Path.GetExtension(f).ToLower()))
-                                return false;
+                            if (!extensions.Contains(Path.GetExtension(file).ToLower()))
+                                continue;
 
-                            string fileName = Path.GetFileName(f);
+                            string fileName = Path.GetFileName(file);
 
-                            if (char.IsDigit(fileName[0]))
-                                return false;
+                            if (string.IsNullOrEmpty(fileName) || char.IsDigit(fileName[0]))
+                                continue;
 
-                            return true;
-                        })
-                        .ToArray();
+                            FileInfo fileInfo = new FileInfo(file);
+
+                            // Удаляем пустые файлы изображений
+                            if (fileInfo.Length == 0)
+                            {
+                                File.Delete(file);
+
+                                Dispatcher.Invoke(() =>
+                                    UpdateStatus($"Удалён пустой файл: {Path.GetFileName(file)}", 30));
+                                System.Threading.Thread.Sleep(500);
+                                continue;
+                            }
+
+                            filesList.Add(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Ошибка с одним файлом не останавливает сканирование
+                            Console.WriteLine($"Пропущен файл: {file} | {ex.Message}");
+                        }
+                    }
+
+                    var files = filesList.ToArray();
 
 
 

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8d92cfceb3a369c899297998102d31229718d731")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1ca323ed3e3e8f678ce03314fc0f149018b023b1")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScreenPDF")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
